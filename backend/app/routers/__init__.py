@@ -1,1 +1,1 @@
-from .example import router as example_router
+from .agents import router as agents_router

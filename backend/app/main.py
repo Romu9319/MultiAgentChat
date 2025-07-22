@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import example_router
+from app.routers import agents_router
 from app.config import API_SECRET, DEBUG
 
 
@@ -14,7 +14,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(example_router)
+app.include_router(agents_router)
 
 @app.get("/")
 def read_root():
