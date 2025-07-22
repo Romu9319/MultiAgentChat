@@ -22,3 +22,7 @@ def read_root():
             "API_SECRET" : API_SECRET,
             "DEBUG" : DEBUG
             }
+
+@app.get("/api/prueba")
+def status():
+    return {"status": "OK", "prueba": "PROBANDO ENLACE CON FRONTED"}
