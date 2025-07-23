@@ -1,13 +1,30 @@
 'use client'
 
-import { useEffect } from "react";
-import { useState } from "react"
+import { useEffect, useState } from "react";
 
 
 export default function HomePage() {
+  const [agents, setAgents] = useState<string[]>([])
+  const [selectedAgent, setSelectedAgent] = useState<string>("")
   const [prompt, setPrompt] = useState<string>("");
   const [response, setResponse] = useState<string>("");
   const [error, setError] = useState<string>("");
+
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/agents")
+      .then((res) => res.json())
+      .then((data: string[]) => {
+        setAgents(data);
+        if (data.length > 0) {
+          setSelectedAgent(data[0]);
+        }
+      })
+      .catch((err) => {
+        console.error("Error cargando agente:", err);
+        setError("No se pudieron cargar los agentes.");
+      });
+  }, []);
 
 
   const handleSubmit = async () => {
@@ -22,7 +39,7 @@ export default function HomePage() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        name: "Agent_1", 
+        name: selectedAgent, 
         prompt: prompt
       }),
     });
@@ -35,7 +52,6 @@ export default function HomePage() {
 
     setResponse(data.response);  
     }
-    
     catch (err: any) {
       console.error("Error:", err);
       setError(err.message || "Error de red.")
@@ -45,6 +61,19 @@ export default function HomePage() {
   return (
     <main style={{ padding: "2rem" }}>
       <h1>Simulador de Agente GPT</h1>
+
+      <div style={{ marginBottom: "1rem"}}>
+        <label>
+          Agent:
+        </label>
+        <select value={selectedAgent} onChange={(e) =>setSelectedAgent(e.target.value)} style={{ marginRight: "1rem"}}>
+          {agents.map((agent) => (
+            <option key={agent} value={agent}>
+              {agent}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <input
         type="text"
