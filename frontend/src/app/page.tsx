@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+// tipos de mensajes
+type Message = {
+  sender: "user" | "agent";
+  content: string;
+};
+
 
 export default function HomePage() {
   const [agents, setAgents] = useState<string[]>([])
@@ -9,6 +15,8 @@ export default function HomePage() {
   const [prompt, setPrompt] = useState<string>("");
   const [response, setResponse] = useState<string>("");
   const [error, setError] = useState<string>("");
+// historial local
+  const [history, setHistory] = useState<Record<string, Message[]>>({});
 
 
   useEffect(() => {
@@ -18,6 +26,9 @@ export default function HomePage() {
         setAgents(data);
         if (data.length > 0) {
           setSelectedAgent(data[0]);
+          const initialHistory: Record<string, Message[]> = {};
+          data.forEach((ag) => (initialHistory[ag] = []));
+          setHistory(initialHistory);
         }
       })
       .catch((err) => {
@@ -28,33 +39,56 @@ export default function HomePage() {
 
 
   const handleSubmit = async () => {
+    if (!prompt.trim()) {
+      setError("El mensaje no puede estar vacio");
+      return;
+    }
+
+    //Agregar mensajes del ususario al historias
+    setHistory((prev) => ({
+      ...prev,
+      [selectedAgent]: [
+        ...prev[selectedAgent],
+        { sender: "user", content: prompt },
+      ],
+    }));    
     setResponse("");
     setError("");
 
     
     try {
       const res = await fetch("http://127.0.0.1:8000/agent/respond", {
-      method: "POST",
-      headers: {
+        method: "POST",
+        headers: {
         "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+        },
+        body: JSON.stringify({
         name: selectedAgent, 
         prompt: prompt
       }),
     });
 
     const data = await res.json();
-
     if (!res.ok) {
       throw new Error(data.detail || "Error desconocido");
     }
 
+//Agregar respuestas del agente al historial
+    setHistory((prev) => ({
+      ...prev,
+      [selectedAgent]: [
+        ...prev[selectedAgent],
+        { sender: "agent", content: data.response },
+      ],
+    }));
     setResponse(data.response);  
     }
     catch (err: any) {
       console.error("Error:", err);
-      setError(err.message || "Error de red.")
+      setError(err.message || "Error de red.");
+    } 
+    finally {
+      setPrompt("");
     }
   };
 
@@ -75,19 +109,44 @@ export default function HomePage() {
         </select>
       </div>
 
-      <input
+      {/*mostramos el historial del agente */}
+      <div 
+        style={{ border: "1px solid #ccc", 
+          padding: "1rem", marginBottom: "1rem",
+          maxHeight: "300px", overflowY: "auto",
+        }}>
+        {history[selectedAgent]?.map((msg, idx) => (
+          <p key={idx}
+            style={{
+              textAlign: msg.sender === "user" ? "right" : "left",
+              margin: "0.5rem 0",}}>
+            <strong>
+              {msg.sender === "user" ? "Tú" : selectedAgent}:
+            </strong>{" "}
+            {msg.content}
+          </p>
+        ))}
+      </div>   
+      <div>
+        <input
         type="text"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="Escribe un mensaje"
         style={{ marginRight: "1rem", padding: "0.5rem"}}
-      />
-      <button onClick={handleSubmit} style={{ padding: "0.5rem 1rem"}}>
-        Enviar
-      </button>
+        />
+        <button onClick={handleSubmit} style={{ padding: "0.5rem 1rem"}}>
+          Enviar
+        </button>
+      </div>
+      
 
-      {response && <p> <strong>Respuesta:</strong> {response} </p>}
-      {error && <p style={{ color: "red" }}><strong>Error:</strong> {error}</p>}
+      {/*{response && <p> <strong>Respuesta:</strong> {response} </p>}*/}
+      {error && (
+        <p style={{ color: "red" }}>
+          <strong>Error:</strong> {error}
+          </p>
+        )}
     </main>
   );
 
