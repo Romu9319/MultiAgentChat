@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import agents_router
+from app.routers.agents import router as agents_router
 from app.config import API_SECRET, DEBUG
 
 
@@ -8,7 +8,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Cambia según puerto/frontend
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Cambia según puerto/frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

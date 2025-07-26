@@ -12,30 +12,79 @@ type Message = {
 export default function HomePage() {
   const [agents, setAgents] = useState<string[]>([])
   const [selectedAgent, setSelectedAgent] = useState<string>("")
+  const [newAgent, setNewAgent] = useState<string>("");
   const [prompt, setPrompt] = useState<string>("");
   const [response, setResponse] = useState<string>("");
   const [error, setError] = useState<string>("");
-// historial local
-  const [history, setHistory] = useState<Record<string, Message[]>>({});
+  const [history, setHistory] = useState<Record<string, Message[]>>({}); // historial local
 
+
+const reloadAgents = async () => {
+  try {
+    setError("");
+    const res = await fetch("http://127.0.0.1:8000/agents");
+    if (!res.ok) throw new Error("No se pudo obtener la lista de agentes");
+    const data: string[] = await res.json();
+    setAgents(data);
+    if (data.length && !data.includes(selectedAgent)) {
+      setSelectedAgent(data[0]);
+    }
+    setHistory((prev) => {
+      const updated: Record<string, Message[]> = {};
+      data.forEach((ag) => (updated[ag] = prev[ag] || []));
+      return updated;
+    })
+  }
+    catch(err:any) {
+    console.error("Error cargando agente:", err);
+    setError(err.message);
+    }
+  };
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/agents")
-      .then((res) => res.json())
-      .then((data: string[]) => {
-        setAgents(data);
-        if (data.length > 0) {
-          setSelectedAgent(data[0]);
-          const initialHistory: Record<string, Message[]> = {};
-          data.forEach((ag) => (initialHistory[ag] = []));
-          setHistory(initialHistory);
-        }
-      })
-      .catch((err) => {
-        console.error("Error cargando agente:", err);
-        setError("No se pudieron cargar los agentes.");
-      });
+    reloadAgents();
   }, []);
+
+
+  const handleCreateAgent = async () => {
+    if (!newAgent.trim()) {
+      setError("El nombre de agente no puede estar vacío");
+      return;
+    }
+    try {
+      setError("");
+      const res = await fetch("http://127.0.0.1:8000/agents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newAgent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al crear agente");
+      setNewAgent("");
+      await reloadAgents();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
+
+
+  const handleDeleteAgent = async () => {
+    if (!selectedAgent) return;
+    try {
+      setError("");
+      const res = await fetch(
+        `http://127.0.0.1:8000/agents/${selectedAgent}`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al eliminar agente");
+      await reloadAgents();
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message);
+    }
+  };
 
 
   const handleSubmit = async () => {
@@ -43,7 +92,7 @@ export default function HomePage() {
       setError("El mensaje no puede estar vacio");
       return;
     }
-
+    
     //Agregar mensajes del ususario al historias
     setHistory((prev) => ({
       ...prev,
@@ -54,10 +103,10 @@ export default function HomePage() {
     }));    
     setResponse("");
     setError("");
-
+    
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/agent/respond", {
+      const res = await fetch("http://127.0.0.1:8000/agents/respond", {
         method: "POST",
         headers: {
         "Content-Type": "application/json"
@@ -70,7 +119,7 @@ export default function HomePage() {
 
     const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.detail || "Error desconocido");
+      throw new Error(data.detail || "Error al enviar prompt");
     }
 
 //Agregar respuestas del agente al historial
@@ -85,7 +134,7 @@ export default function HomePage() {
     }
     catch (err: any) {
       console.error("Error:", err);
-      setError(err.message || "Error de red.");
+      setError(err.message);
     } 
     finally {
       setPrompt("");
@@ -107,35 +156,59 @@ export default function HomePage() {
             </option>
           ))}
         </select>
-      </div>
+      
 
-      {/*mostramos el historial del agente */}
-      <div 
-        style={{ border: "1px solid #ccc", 
-          padding: "1rem", marginBottom: "1rem",
-          maxHeight: "300px", overflowY: "auto",
-        }}>
-        {history[selectedAgent]?.map((msg, idx) => (
-          <p key={idx}
+      <input
+          type="text"
+          placeholder="Nuevo agente"
+          value={newAgent}
+          onChange={(e) => setNewAgent(e.target.value)}
+          style={{ marginRight: "0.5rem" }}
+        />
+        <button onClick={handleCreateAgent}>Crear agente</button>
+        <button
+          onClick={handleDeleteAgent}
+          style={{ marginLeft: "1rem", color: "red" }}
+        >
+          Eliminar agente
+        </button>
+      </div>      
+      {/* Historial */}
+      <div
+        style={{
+          border: "1px solid #ccc",
+          padding: "1rem",
+          margin: "1rem 0",
+          maxHeight: "300px",
+          overflowY: "auto",
+        }}
+      >
+        {history[selectedAgent]?.map((msg, i) => (
+          <p
+            key={i}
             style={{
               textAlign: msg.sender === "user" ? "right" : "left",
-              margin: "0.5rem 0",}}>
+              margin: "0.5rem 0",
+            }}
+          >
             <strong>
               {msg.sender === "user" ? "Tú" : selectedAgent}:
             </strong>{" "}
             {msg.content}
           </p>
         ))}
-      </div>   
+      </div>
+
+      {/* Input y botón */}
       <div>
         <input
-        type="text"
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="Escribe un mensaje"
-        style={{ marginRight: "1rem", padding: "0.5rem"}}
+          type="text"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Escribe un mensaje"
+          style={{ marginRight: "1rem", padding: "0.5rem", width: "60%" }}
         />
-        <button onClick={handleSubmit} style={{ padding: "0.5rem 1rem"}}>
+        <button onClick={handleSubmit} style={{ padding: "0.5rem 1rem" }}>
           Enviar
         </button>
       </div>
