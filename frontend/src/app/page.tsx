@@ -7,6 +7,7 @@ type Message = {
   sender: "user" | "agent";
   content: string;
 };
+type BroadcastResponses = Record<string, string>;
 
 
 export default function HomePage() {
@@ -17,7 +18,10 @@ export default function HomePage() {
   const [response, setResponse] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<Record<string, Message[]>>({}); // historial local
-
+// Broadcast states
+  const [broadcastPrompt, setBroadcastPrompt] = useState<string>("");
+  const [broadcastResponses, setBroadcastResponses] = useState<BroadcastResponses>({});
+  const [broadcastError, setBroadcastError] = useState<string>("");
 
 const reloadAgents = async () => {
   try {
@@ -29,14 +33,15 @@ const reloadAgents = async () => {
     if (data.length && !data.includes(selectedAgent)) {
       setSelectedAgent(data[0]);
     }
+    //Ajuste de Historial
     setHistory((prev) => {
       const updated: Record<string, Message[]> = {};
       data.forEach((ag) => (updated[ag] = prev[ag] || []));
       return updated;
-    })
+    });
   }
     catch(err:any) {
-    console.error("Error cargando agente:", err);
+    console.error(err);
     setError(err.message);
     }
   };
@@ -45,7 +50,7 @@ const reloadAgents = async () => {
     reloadAgents();
   }, []);
 
-
+// Creación de nuevo agente
   const handleCreateAgent = async () => {
     if (!newAgent.trim()) {
       setError("El nombre de agente no puede estar vacío");
@@ -68,7 +73,7 @@ const reloadAgents = async () => {
     }
   };
 
-
+//Eliminación de agentes
   const handleDeleteAgent = async () => {
     if (!selectedAgent) return;
     try {
@@ -86,13 +91,13 @@ const reloadAgents = async () => {
     }
   };
 
-
+// Enviar prompt a un agente
   const handleSubmit = async () => {
     if (!prompt.trim()) {
       setError("El mensaje no puede estar vacio");
       return;
     }
-    
+    setError("");
     //Agregar mensajes del ususario al historias
     setHistory((prev) => ({
       ...prev,
@@ -102,8 +107,6 @@ const reloadAgents = async () => {
       ],
     }));    
     setResponse("");
-    setError("");
-    
     
     try {
       const res = await fetch("http://127.0.0.1:8000/agents/respond", {
@@ -112,8 +115,8 @@ const reloadAgents = async () => {
         "Content-Type": "application/json"
         },
         body: JSON.stringify({
-        name: selectedAgent, 
-        prompt: prompt
+          name: selectedAgent, 
+          prompt: prompt
       }),
     });
 
@@ -141,6 +144,36 @@ const reloadAgents = async () => {
     }
   };
 
+
+// Broadcast a todos los agentes
+  const handleBroadcast = async () => {
+    if (!broadcastPrompt.trim()) {
+      setBroadcastError("El mensaje de broadcast no puede estar vacío.");
+      return;
+      } 
+    setBroadcastError("");
+    setBroadcastResponses({});
+
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/agents/broadcast", {
+        method:"POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({prompt: broadcastPrompt}),
+      });
+      const data: {responses: BroadcastResponses} = await res.json();
+      if (!res.ok) throw new Error(data.responses ? "" : "Error en broadcast");
+      setBroadcastResponses(data.responses);
+    }
+    catch (err: any) {
+      console.error(err);
+      setBroadcastError(err.message || "Error al hacer broascast.");
+    }
+    finally {
+      setBroadcastPrompt("");
+    }
+  }
+
   return (
     <main style={{ padding: "2rem" }}>
       <h1>Simulador de Agente GPT</h1>
@@ -156,8 +189,6 @@ const reloadAgents = async () => {
             </option>
           ))}
         </select>
-      
-
       <input
           type="text"
           placeholder="Nuevo agente"
@@ -172,8 +203,8 @@ const reloadAgents = async () => {
         >
           Eliminar agente
         </button>
-      </div>      
-      {/* Historial */}
+      </div>
+      {/* Historial de conversacion*/}
       <div
         style={{
           border: "1px solid #ccc",
@@ -213,6 +244,47 @@ const reloadAgents = async () => {
         </button>
       </div>
       
+      {/*Sección Broadcast */}
+      <section style={{marginTop: "2rem"}}>
+        <h2>
+          Broadcast de agentes
+        </h2>
+        <div>
+          <input 
+            type="text"
+            value={broadcastPrompt}
+            onChange={(e) => setBroadcastPrompt(e.target.value)}
+            placeholder="Escribe prompt de broadcast"
+            style={{ marginRight: "1rem", padding: "0.5rem", width: "60%" }}
+          />
+          <button onClick={handleBroadcast} style={{ padding: "0.5rem 1rem" }}>
+            Broadcast
+          </button>
+        </div>
+
+        {broadcastError && (
+          <p style={{ color: "red", marginTop: "1rem" }}>
+            <strong>Error:</strong> {broadcastError}
+          </p>
+        )}
+
+        {Object.keys(broadcastResponses).length > 0 && (
+          <div 
+            style={{
+              border: "1px solid #888",
+              padding: "1rem",
+              marginTop: "1rem",
+            }}>
+              {Object.entries(broadcastResponses).map(
+                ([agent, resp], idx) => (
+                  <p key={idx} style={{margin:"0.5rem 0"}}>
+                    <strong>{agent}:</strong> {resp}
+                  </p>
+                )
+              )}
+          </div>
+        )}
+      </section>
 
       {/*{response && <p> <strong>Respuesta:</strong> {response} </p>}*/}
       {error && (

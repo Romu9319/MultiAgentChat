@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from .schemas import AgentInput, AgentMessageInput, AgentCtreate
-from typing import List
+from .schemas import AgentCtreate, AgentMessageInput, AgentBroadcastInput, AgentBroadcastOutput
+from typing import List, Dict
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ def delete_agent(name:str):
 
 
 @router.post("/agents/respond")
-def get_agent_response(data: AgentInput):
+def get_agent_response(data: AgentMessageInput):
     name = data.name
     prompt = data.prompt
     try:
@@ -48,3 +48,18 @@ def get_agent_response(data: AgentInput):
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@router.post("/agents/broadcast", response_model=AgentBroadcastOutput)
+def broadcast_prompt(data: AgentBroadcastInput):
+    prompt = data.prompt
+    try:
+        if not prompt:
+            raise HTTPException(status_code=400, detail="El prompt no puede estar vacio")
+        replies: Dict[str, str] = {
+            agent_name: f"[BROADCAST SIMULADO] '{agent_name}' responde a: '{prompt}'"
+            for agent_name in AGENTS
+        }
+        return{"response": replies}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error Interno: {str(e)}")

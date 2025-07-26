@@ -1,1 +1,1 @@
-from app.routers.agents import router as agents_router
+from .agents import router as agents_router
