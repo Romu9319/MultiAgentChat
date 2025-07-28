@@ -17,5 +17,5 @@ class AgentBroadcastInput(BaseModel):
 
 
 class AgentBroadcastOutput(BaseModel):
-    responses: Dict[str, str]
+    response: Dict[str, str]
     

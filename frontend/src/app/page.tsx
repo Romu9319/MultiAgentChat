@@ -161,9 +161,9 @@ const reloadAgents = async () => {
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({prompt: broadcastPrompt}),
       });
-      const data: {responses: BroadcastResponses} = await res.json();
-      if (!res.ok) throw new Error(data.responses ? "" : "Error en broadcast");
-      setBroadcastResponses(data.responses);
+      const data: {response: BroadcastResponses} = await res.json();
+      if (!res.ok) throw new Error(data.response ? "" : "Error en broadcast");
+      setBroadcastResponses(data.response);
     }
     catch (err: any) {
       console.error(err);
