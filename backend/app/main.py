@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers.agents import router as agents_router
+from app.routers.chat import router as chat_router
 from app.config import API_SECRET, DEBUG
 
 
@@ -15,6 +16,7 @@ app.add_middleware(
 )
 
 app.include_router(agents_router)
+app.include_router(chat_router)
 
 @app.get("/")
 def read_root():

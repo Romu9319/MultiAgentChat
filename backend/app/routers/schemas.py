@@ -19,3 +19,5 @@ class AgentBroadcastInput(BaseModel):
 class AgentBroadcastOutput(BaseModel):
     response: Dict[str, str]
     
+class ChatMessage(BaseModel):
+    prompt: constr(strip_whitespace=True, min_length=1)
