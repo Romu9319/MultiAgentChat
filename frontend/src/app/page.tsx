@@ -106,17 +106,15 @@ const reloadAgents = async () => {
         { sender: "user", content: prompt },
       ],
     }));    
-    setResponse("");
     
     try {
-      const res = await fetch("http://127.0.0.1:8000/agents/respond", {
+      const res = await fetch("http://127.0.0.1:8000/chat", {
         method: "POST",
         headers: {
         "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          name: selectedAgent, 
-          prompt: prompt
+          prompt
       }),
     });
 
@@ -125,7 +123,7 @@ const reloadAgents = async () => {
       throw new Error(data.detail || "Error al enviar prompt");
     }
 
-//Agregar respuestas del agente al historial
+    //Agregar respuestas del agente al historial
     setHistory((prev) => ({
       ...prev,
       [selectedAgent]: [
@@ -133,11 +131,11 @@ const reloadAgents = async () => {
         { sender: "agent", content: data.response },
       ],
     }));
-    setResponse(data.response);  
     }
+    
     catch (err: any) {
-      console.error("Error:", err);
-      setError(err.message);
+      console.error(err);
+      setError(err.message || "Error al llamar al endpoint /chat");
     } 
     finally {
       setPrompt("");

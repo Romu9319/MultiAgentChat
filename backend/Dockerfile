@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Directorio de trabajo
-WORKING /app
+WORKDIR /app
 
 # Copiar e instalar dependencias
 COPY requirements.txt .
